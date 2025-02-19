@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Website Security Monitoring</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: white;
+            text-align: center;
+            margin: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+        .threat-level {
+            font-size: 20px;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .log {
+            text-align: left;
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            padding: 5px;
+            border-bottom: 1px solid #444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Real-Time Website Security Monitoring</h1>
+        <div id="threatLevel" class="threat-level">Threat Level: Normal</div>
+        <p>Your IP: <span id="userIP">Fetching...</span></p>
+        <p>Location: <span id="userLocation">Fetching...</span></p>
+        <p>ISP: <span id="isp">Fetching...</span></p>
+        <p>VPN/Proxy: <span id="vpnStatus">Checking...</span></p>
+        <p>Website Security: <span id="siteSecurity">Checking...</span></p>
+        <p>Data Breach Check: <span id="breachStatus">Checking...</span></p>
+        <div class="log" id="logContainer"></div>
+    </div>
+
+    <script>
+        const logContainer = document.getElementById("logContainer");
+        const threatLevel = document.getElementById("threatLevel");
+        const userIP = document.getElementById("userIP");
+        const userLocation = document.getElementById("userLocation");
+        const isp = document.getElementById("isp");
+        const vpnStatus = document.getElementById("vpnStatus");
+        const siteSecurity = document.getElementById("siteSecurity");
+        const breachStatus = document.getElementById("breachStatus");
+
+        function addLogEntry(message) {
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement("div");
+            logEntry.className = "log-entry";
+            logEntry.innerHTML = `<strong>${time}</strong>: ${message}`;
+            logContainer.prepend(logEntry);
+        }
+
+        function fetchIPDetails() {
+            fetch("https://ipapi.co/json/")
+                .then(response => response.json())
+                .then(data => {
+                    userIP.textContent = data.ip;
+                    userLocation.textContent = `${data.city}, ${data.region}, ${data.country_name}`;
+                    isp.textContent = data.org;
+                    addLogEntry(`User IP: ${data.ip}, Location: ${data.city}, ${data.country_name}`);
+                    checkVPN(data.ip);
+                    checkBreach(data.ip);
+                })
+                .catch(() => {
+                    userIP.textContent = "Unable to fetch";
+                    userLocation.textContent = "Unknown";
+                    isp.textContent = "Unknown";
+                });
+        }
+
+        function checkVPN(ip) {
+            fetch(`https://vpnapi.io/api/${ip}?key=free`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.security && data.security.vpn) {
+                        vpnStatus.textContent = "Using VPN/Proxy";
+                        addLogEntry("Warning: User is on VPN/Proxy!");
+                        updateThreatLevel("High");
+                    } else {
+                        vpnStatus.textContent = "No VPN/Proxy detected";
+                    }
+                })
+                .catch(() => {
+                    vpnStatus.textContent = "Check failed";
+                });
+        }
+
+        function checkWebsiteSecurity() {
+            const secure = window.location.protocol === "https:";
+            siteSecurity.textContent = secure ? "Secure (HTTPS)" : "Insecure (No HTTPS)";
+            if (!secure) {
+                addLogEntry("Warning: Website is not using HTTPS!");
+                updateThreatLevel("Medium");
+            }
+        }
+
+        function checkBreach(ip) {
+            fetch(`https://haveibeenpwned.com/api/v3/breachedaccount/${ip}`, {
+                headers: { 'hibp-api-key': 'your_api_key_here' }
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error('No breach found');
+                    return response.json();
+                })
+                .then(data => {
+                    breachStatus.textContent = "⚠️ Data Breach Detected!";
+                    addLogEntry("ALERT! Your IP has been found in a data breach.");
+                    updateThreatLevel("High");
+                })
+                .catch(() => {
+                    breachStatus.textContent = "No breaches detected";
+                });
+        }
+
+        function updateThreatLevel(level) {
+            const levels = { "Low": "green", "Medium": "orange", "High": "red" };
+            threatLevel.textContent = `Threat Level: ${level}`;
+            threatLevel.style.backgroundColor = levels[level];
+        }
+
+        fetchIPDetails();
+        checkWebsiteSecurity();
+    </script>
+</body>
+</html>
